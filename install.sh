@@ -14,9 +14,19 @@ BIN="$HOME/.local/bin"
 APPS="$HOME/.local/share/applications"
 ICONS="$HOME/.local/share/icons/hicolor/256x256/apps"
 
+# Si le thème d'icônes de l'utilisateur a un cache, GTK (wofi, rofi, menus…) ne voit que lui :
+# il faut le régénérer, sinon la nouvelle icône reste invisible.
+maj_cache_icones() {
+    local theme="$HOME/.local/share/icons/hicolor"
+    if [ -f "$theme/icon-theme.cache" ] && command -v gtk-update-icon-cache >/dev/null 2>&1; then
+        gtk-update-icon-cache -f -t -q "$theme" || true
+    fi
+}
+
 if [ "${1:-}" = "-u" ] || [ "${1:-}" = "--uninstall" ]; then
     "$BIN/$NOM" --stop 2>/dev/null || true
     rm -f "$BIN/$NOM" "$APPS/$NOM.desktop" "$ICONS/$NOM.png"
+    maj_cache_icones
     echo "désinstallé (réglages : ~/.config/igogs, données : ~/.local/share/igogs)."
     exit 0
 fi
@@ -58,6 +68,7 @@ Keywords=go;baduk;weiqi;goban;ogs;camera;
 DESKTOP
 chmod 644 "$APPS/$NOM.desktop"
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$APPS" 2>/dev/null || true
+maj_cache_icones
 
 echo
 echo "== terminé"
