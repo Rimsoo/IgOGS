@@ -39,7 +39,7 @@ jobs:
 
       - name: Build AppImage and Python package
         run: |
-          apt-get update && apt-get install -y --no-install-recommends file jq
+          apt-get update && apt-get install -y --no-install-recommends file jq cmake ninja-build
           ./build-appimage.sh
           pip install --quiet build && python -m build --outdir dist .
           mv ./*.AppImage dist/

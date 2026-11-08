@@ -1,110 +1,138 @@
 # IgOGS
 
-**Un driver caméra pour goban physique.** Une webcam filme ton goban ; IgOGS lit les pierres, en déduit
-les coups et les transmet à qui veut les recevoir — comme une planche électronique (DGT Pegasus), mais
-avec ton propre goban en bois.
+*[Version française](README.fr.md)*
 
-- **Jouer sur OGS** (online-go.com) sur ton goban : tes coups partent tout seuls, ceux de l'adversaire
-  s'affichent (et sont annoncés à voix haute) pour que tu les poses.
-- **Analyser avec [Go Sensei](https://forgejo.aaaoz.fr/Rimso/go-sensei)** : bouton « 📷 Goban », la position
-  affichée et le goban restent synchronisés dans les deux sens.
-- **Enregistrer** une partie jouée à deux et la télécharger en SGF (ou l'envoyer à Go Sensei).
-- **Toute autre appli** peut se brancher via un petit protocole HTTP local : voir [PROTOCOL.md](PROTOCOL.md).
+**A camera driver for a physical goban.** A webcam films your board; IgOGS reads the stones, works out
+the moves and sends them to whoever wants them — like an electronic board (DGT Pegasus style), but with
+your own wooden goban.
 
-Interface en français et en anglais (FR / EN en haut à droite).
+- **Play on OGS** (online-go.com) on your board: your moves are sent on their own, your opponent's moves
+  are shown (and read out loud) so you can place them.
+- **Analyse with [Go Sensei](https://forgejo.aaaoz.fr/Rimso/go-sensei)**: click “📷 Goban” and the displayed
+  position and your board stay in sync both ways.
+- **Record** a game played face to face and download it as SGF (or send it to Go Sensei).
+- **Any other app** can plug in through a small local HTTP protocol: see [PROTOCOL.md](PROTOCOL.md).
 
-Recréation en Python d'[igoki](https://github.com/CmdrDats/igoki) (Clojure), sans réseau de neurones ni Java.
+The interface is available in English and French (EN / FR, top right).
 
-## Installation
+A Python rewrite of [igoki](https://github.com/CmdrDats/igoki) (Clojure) — no neural network, no Java.
 
-**AppImage (le plus simple)** : télécharge `IgOGS-x86_64.AppImage` depuis les
-[releases](https://forgejo.aaaoz.fr/Rimso/IgOGS/releases) — Python, OpenCV et tout le reste sont
-dedans.
+![Recording a game: the camera view with the grid and live reading, and the recorded game with move numbers](docs/recording.webp)
+
+## Installation (Linux)
+
+**AppImage (easiest)**: download `IgOGS-x86_64.AppImage` from the
+[releases](https://forgejo.aaaoz.fr/Rimso/IgOGS/releases). It is a single ~21 MB file with Python, a trimmed
+OpenCV and everything else inside.
 
 ```sh
 chmod +x IgOGS-x86_64.AppImage
-./IgOGS-x86_64.AppImage                     # ou, pour l'avoir dans le menu :
-./install.sh IgOGS-x86_64.AppImage          # (install.sh est dans le dépôt)
+./IgOGS-x86_64.AppImage                     # or, to get it in the applications menu:
+./install.sh IgOGS-x86_64.AppImage          # (install.sh is in this repository)
 ```
 
-**Depuis les sources** :
+If it answers “dlopen(): error loading libfuse.so.2”, install `fuse2` or run it with
+`--appimage-extract-and-run`.
+
+**From source**:
 
 ```sh
 git clone https://forgejo.aaaoz.fr/Rimso/IgOGS.git && cd IgOGS
-./install.sh          # environnement Python, commande « igogs », entrée « IgOGS » dans le menu
-./build-appimage.sh   # construit l'AppImage
+./install.sh          # Python environment, “igogs” command, “IgOGS” menu entry
+./build-appimage.sh   # builds the AppImage (needs cmake and a C++ compiler)
 ```
 
-- **Lancer** : menu des applications → IgOGS, ou `igogs`. S'il tourne déjà, ça rouvre simplement la page.
-- **Arrêter** : bouton ⏻ en haut à droite de l'interface, menu de l'icône dans la zone de notification
-  (Waybar, KDE…), ou `igogs --stop`. La caméra est libérée.
-- **Redémarrer** (après une mise à jour) : bouton ⟳ ; la page se recharge toute seule.
-- Options : `--port N`, `--no-browser`, `--no-tray`. Désinstaller : `./install.sh -u`.
+- **Start**: applications menu → IgOGS, or `igogs`. If it is already running, this just reopens the page.
+- **Quit**: ⏻ button (top right of the interface), the tray icon menu (Waybar, KDE…), or `igogs --stop`.
+  The camera is released.
+- **Restart** (after an update): ⟳ button; the page reloads by itself.
+- Options: `--port N`, `--no-browser`, `--no-tray`. Uninstall: `./install.sh -u`.
 
-Dépendances : Python ≥ 3.10, `numpy`, `opencv-python-headless`, `websocket-client`, `dbus-fast` (icône).
+Dependencies (from source): Python ≥ 3.10, `numpy`, `opencv-python-headless`, `websocket-client`,
+`dbus-fast` (tray icon).
 
-## Mise en route
+## Getting started
 
-1. **Caméra** : choisis-la dans la liste (ou « Simulateur » pour essayer sans goban). Place la caméra au-dessus
-   du goban, le plus à la verticale possible, tout le plateau visible.
-2. **Coins** : « Placer les 4 coins », puis clique les 4 coins de la grille (lignes extérieures) dans
-   n'importe quel ordre. La grille est ensuite **calée automatiquement sur les lignes** ; les coins restent
-   déplaçables à la souris.
-3. **Orientation** : le coin orange marqué « A19 » doit être en haut à gauche *vu du joueur*. Sinon :
-   « Tourner ↻ ».
-4. **Goban vide** (recommandé) : sur un goban vide, « Mémoriser goban vide » enregistre la couleur du bois à
-   chaque intersection — la lecture est alors insensible aux ombres et reflets. Sans cette étape, IgOGS
-   apprend le bois tout seul au fil de la partie.
+1. **Camera**: pick it in the list (or “Simulator” to try without a board). Put the camera above the board,
+   as straight down as you can, with the whole board in view.
+2. **My seat**: tell IgOGS where you sit in the camera image (bottom, top — facing the camera —, left,
+   right). The preview is rotated to show the board from your seat, and the coordinates follow: A1 is at
+   your bottom left.
+3. **Corners**: “Place the 4 corners”, then click the 4 corners of the grid (outer lines) in any order. The
+   grid then **snaps onto the lines automatically**; corners can still be dragged with the mouse. The yellow
+   coordinates around the grid let you check the orientation at a glance (“Rotate” / “Mirror” otherwise).
+4. **Empty goban** (recommended): with an empty board, “Learn empty goban” records the colour of the wood at
+   every point — reading then ignores shadows and reflections. Without it, IgOGS learns the wood by itself
+   as the game goes.
 
-Les pastilles sur l'image montrent la lecture en direct (noir, blanc, rouge = incertain).
+The dots on the camera image show the live reading (black, white; red = unsure). “Straightened view” shows
+the board as IgOGS sees it after the perspective correction:
 
-## Jouer sur OGS
+![Straightened view of the simulated board, with the coordinates read from the player's seat](docs/straightened-view.webp)
 
-Onglet **OGS** → pseudo + mot de passe. Le mot de passe n'est utilisé qu'une fois pour obtenir un jeton
-OAuth (application publique, comme NXGo) ; seuls les jetons sont gardés, dans `~/.config/igogs/config.json`
-(mode 600). Ensuite « Jouer sur le goban » sur une partie en cours.
+## Playing on OGS
 
-- Pose ta pierre : dès que ta main est partie et l'image stable (~1 s), le coup est envoyé.
-- Le coup de l'adversaire apparaît en **cercle pointillé** : pose-le. Les pierres à retirer (prises) sont
-  **barrées en rouge**.
-- Rien n'est jamais envoyé tant que le goban ne correspond pas exactement à la partie + un coup légal de ta
-  couleur. Pendules, « Passer », « Abandonner » (avec confirmation) et acceptation d'annulation sont dans
-  l'onglet.
+**OGS** tab → username + password. The password is only used once to get an OAuth token (public client, as
+in NXGo); only the tokens are kept, in `~/.config/igogs/config.json` (mode 600). Then “Play on the goban” on a
+game in progress.
 
-## Enregistrer une partie
+- Place your stone: as soon as your hand is gone and the image is steady (~1 s), the move is sent.
+- Your opponent's move shows up as a **dashed circle**: place it. Stones to remove (captures) are
+  **crossed out in red**.
+- Nothing is ever sent unless the board matches the game exactly plus one legal move of your colour. Clocks,
+  “Pass”, “Resign” (with confirmation) and accepting an undo are in the tab.
+- If the board looks rotated or mirrored compared to the game, IgOGS tells you; “Auto-orient” tries the 8
+  possible orientations and keeps the one that matches.
 
-Onglet **Enregistrement** : « Nouvelle partie » (les pierres déjà posées deviennent la position de départ,
-pratique pour le handicap), puis jouez. Retirer la ou les dernières pierres annule les coups. Plusieurs coups
-joués vite (jusqu'à 4) sont reconnus dans le bon ordre. « Télécharger le SGF » ou « Analyser dans Go Sensei ».
+## Analysing with Go Sensei
 
-## Comment ça marche
+In Go Sensei, click **📷 Goban**: Go Sensei takes control of the board. IgOGS shows what to place or remove
+to reproduce the displayed position, and the moves you play on the board are played in Go Sensei (as
+variations, analysed live). Removing the last stones goes back.
 
-| Étape | Module | Principe |
+![Go Sensei has the board: IgOGS asks to place Black at R14 (dashed stone) to match the displayed position](docs/go-sensei-sync.webp)
+
+## Recording a game
+
+**Recording** tab: “New game” (stones already on the board become the starting position — handy for
+handicap), then play. Removing the last stone(s) undoes the moves. Several moves played quickly (up to 4) are
+recognised in the right order. “Download SGF” or “Analyse in Go Sensei”.
+
+## How it works
+
+| Step | Module | Approach |
 |---|---|---|
-| Image | `vision.Camera` | lecture continue (V4L2, MJPEG 1280×720) |
-| Redressement | `vision.Calibration` | homographie 4 coins → plan du goban ; `refine()` maximise la réponse « ligne sombre fine » (black-hat) le long de la grille, du flou au net, en n'utilisant que les segments entre intersections vides |
-| Lecture | `vision.Detector` | Lab médian sur un disque autour de chaque intersection, comparé à 3 modèles : bois *propre à chaque intersection*, noir, blanc ; démarrage à froid par itérations modèle ↔ étiquettes ; modèles affinés à chaque position stable ; gain global pour les variations de lumière |
-| Stabilité | `tracker.Stabilizer` | une position n'est lue qu'après ~0,8 s sans mouvement ni intersection douteuse (main au-dessus du goban) |
-| Coups | `tracker.Tracker` | diff avec la position attendue → séquence de coups légaux (prises, ko), pierres prises tolérées tant qu'elles ne sont pas retirées, annulation seulement si des pierres ont été *retirées* |
-| OGS | `ogs.py` | OAuth2 (grant password, client public) + websocket temps réel du protocole officiel `online-go/goban` |
+| Image | `vision.Camera` | continuous capture (V4L2, MJPEG 1280×720) |
+| Straightening | `vision.Calibration` | 4-corner homography → board plane; `refine()` maximises a “thin dark line” (black-hat) response along the grid, coarse to fine, using only segments between empty points |
+| Reading | `vision.Detector` | median Lab colour over a disc at each point, compared with 3 models: wood *specific to each point*, black, white; cold start by model ↔ label iterations; models refined on every stable position; global gain for lighting changes |
+| Stability | `tracker.Stabilizer` | a position is only read after ~0.8 s with no motion and no unsure point (hand over the board) |
+| Moves | `tracker.Tracker` | diff with the expected position → sequence of legal moves (captures, ko); captured stones are tolerated until removed; undo only when stones were *removed* |
+| OGS | `ogs.py` | OAuth2 (password grant, public client) + the real-time websocket of the official `online-go/goban` protocol |
 
-## Développement
+## Development
 
 ```sh
 uv pip install -e '.[dev]' && .venv/bin/pytest
 ```
 
-Les tests utilisent un **goban simulé** rendu en perspective (bois, éclairage inégal, bruit, pierres
-décalées) : lecture sur 9/13/19, ajustement de la grille, changements de lumière, inférence des coups, flux
-OGS complet, et un bout-en-bout caméra simulée → SGF.
+The tests use a **simulated goban** rendered in perspective (wood, uneven lighting, noise, off-centre
+stones): reading on 9/13/19, grid snapping, lighting changes, move inference, orientation and seat changes,
+the full OGS flow, and an end-to-end simulated camera → SGF run.
 
-Fichiers : config `~/.config/igogs/config.json`, modèle de couleurs appris `~/.local/share/igogs/model.npz`.
+The AppImage embeds an OpenCV built with only what IgOGS uses (core, imgproc, JPEG, V4L2) and numpy built
+without BLAS: 21 MB instead of 88 MB, and slightly faster than the full packages.
 
-## Limites connues
+Files: config `~/.config/igogs/config.json`, learnt colour model `~/.local/share/igogs/model.npz`.
 
-- Une caméra déjà ouverte par une autre application (Discord, caméra virtuelle…) n'est pas lisible :
-  IgOGS l'indique en nommant l'application.
-- Gobans carrés 9×9, 13×13, 19×19.
-- L'ajustement automatique de la grille s'abstient sur un plateau très rempli (trop peu de lignes visibles) :
-  calibrer de préférence goban vide ou peu rempli.
-- Pas encore de projecteur ni de marquage des pierres mortes depuis le goban (à faire sur OGS).
+## Known limitations
+
+- A camera already opened by another application (Discord, a virtual camera…) cannot be read: IgOGS says so
+  and names the application.
+- Square boards only: 9×9, 13×13, 19×19.
+- Automatic grid snapping holds back on a very crowded board (too few visible lines): calibrate with an empty
+  or sparse board.
+- No projector support yet, and dead stones are marked on OGS, not on the board.
+
+## License
+
+MIT. OpenCV (embedded in the AppImage) is under the Apache 2.0 license.
