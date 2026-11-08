@@ -390,9 +390,37 @@ def stop_instance(port):
         return False
 
 
+def host_env():
+    """Environnement pour lancer un programme du système (navigateur) depuis l'AppImage : on
+    retire ce qui pointe vers l'image (Python, bibliothèques embarquées). Sans AppImage : inchangé."""
+    env = dict(os.environ)
+    appdir = env.get("APPDIR")
+    for k in ("PYTHONHOME", "PYTHONPATH", "PYTHONNOUSERSITE", "PYTHONDONTWRITEBYTECODE"):
+        env.pop(k, None)
+    if appdir:
+        for k, v in list(env.items()):
+            if k.endswith("_ORIG"):
+                continue
+            if appdir in v and k not in ("APPDIR", "APPIMAGE", "OWD", "ARGV0"):
+                parts = [p for p in v.split(":") if appdir not in p]
+                if parts:
+                    env[k] = ":".join(parts)
+                else:
+                    env.pop(k)
+        for k, v in list(env.items()):
+            if k.endswith("_ORIG"):
+                env[k[:-5]] = v
+    return env
+
+
 def open_browser_at(url):
-    import webbrowser
-    threading.Thread(target=webbrowser.open, args=(url,), daemon=True).start()
+    import subprocess
+    try:
+        subprocess.Popen(["xdg-open", url], env=host_env(), stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
+    except OSError:  # pas de xdg-open (autre système)
+        import webbrowser
+        threading.Thread(target=webbrowser.open, args=(url,), daemon=True).start()
 
 
 def run(port=None, open_browser=True, tray=True):
@@ -401,8 +429,7 @@ def run(port=None, open_browser=True, tray=True):
     if running_instance(port):  # déjà lancé : on rouvre simplement l'interface
         log(f"IgOGS tourne déjà : {url}")
         if open_browser:
-            import webbrowser
-            webbrowser.open(url)
+            open_browser_at(url)
         return
     app = App(port=port)
     try:
@@ -435,4 +462,8 @@ def run(port=None, open_browser=True, tray=True):
             # OpenCV ouvre la caméra sans O_CLOEXEC : sans cela, le nouveau processus hériterait
             # de l'ancienne ouverture et trouverait sa propre caméra occupée.
             os.closerange(3, 4096)
-            os.execv(sys.executable, [sys.executable, "-m", "igogs", "--no-browser", "--port", str(app.port)])
+            args = ["--no-browser", "--port", str(app.port)]
+            appimage = os.environ.get("APPIMAGE")
+            if appimage:  # dans l'AppImage, on relance l'AppImage elle-même (sys.executable est son lanceur)
+                os.execve(appimage, [appimage, *args], host_env())
+            os.execv(sys.executable, [sys.executable, "-m", "igogs", *args])

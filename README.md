@@ -17,9 +17,22 @@ Recréation en Python d'[igoki](https://github.com/CmdrDats/igoki) (Clojure), sa
 
 ## Installation
 
+**AppImage (le plus simple)** : télécharge `IgOGS-x86_64.AppImage` depuis les
+[releases](https://forgejo.aaaoz.fr/Rimso/IgOGS/releases) — Python, OpenCV et tout le reste sont
+dedans.
+
+```sh
+chmod +x IgOGS-x86_64.AppImage
+./IgOGS-x86_64.AppImage                     # ou, pour l'avoir dans le menu :
+./install.sh IgOGS-x86_64.AppImage          # (install.sh est dans le dépôt)
+```
+
+**Depuis les sources** :
+
 ```sh
 git clone https://forgejo.aaaoz.fr/Rimso/IgOGS.git && cd IgOGS
 ./install.sh          # environnement Python, commande « igogs », entrée « IgOGS » dans le menu
+./build-appimage.sh   # construit l'AppImage
 ```
 
 - **Lancer** : menu des applications → IgOGS, ou `igogs`. S'il tourne déjà, ça rouvre simplement la page.

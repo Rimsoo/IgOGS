@@ -2,8 +2,9 @@
 # Installe IgOGS pour l'utilisateur : une commande « igogs » et une entrée dans le menu des
 # applications. Rien en dehors du dossier personnel, aucun sudo.
 #
-#   ./install.sh      installe (ou met à jour) depuis ce dossier
-#   ./install.sh -u   désinstalle (garde réglages et données)
+#   ./install.sh                         depuis les sources de ce dossier (environnement .venv)
+#   ./install.sh IgOGS-x86_64.AppImage   depuis l'AppImage (rien d'autre à installer)
+#   ./install.sh -u                      désinstalle (garde réglages et données)
 
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
@@ -20,18 +21,28 @@ if [ "${1:-}" = "-u" ] || [ "${1:-}" = "--uninstall" ]; then
     exit 0
 fi
 
-echo "== environnement Python"
-if command -v uv >/dev/null 2>&1; then
-    [ -d .venv ] || uv venv -q .venv
-    uv pip install -q --python .venv/bin/python -e .
+APP="${1:-}"
+if [ -n "$APP" ]; then
+    [ -f "$APP" ] || { echo "introuvable : $APP" >&2; exit 1; }
+    CIBLE="$(readlink -f "$APP")"
+    chmod +x "$CIBLE"
+    echo "== AppImage : $CIBLE"
 else
-    [ -d .venv ] || python3 -m venv .venv
-    .venv/bin/pip install -q -e .
+    echo "== environnement Python (sources)"
+    if command -v uv >/dev/null 2>&1; then
+        [ -d .venv ] || uv venv -q .venv
+        uv pip install -q --python .venv/bin/python -e .
+    else
+        [ -d .venv ] || python3 -m venv .venv
+        .venv/bin/pip install -q -e .
+    fi
+    CIBLE="$PWD/.venv/bin/igogs"
 fi
 
 echo "== commande et menu"
+"$BIN/$NOM" --stop >/dev/null 2>&1 || true   # l'ancienne version ne doit pas garder la caméra
 mkdir -p "$BIN" "$APPS" "$ICONS"
-ln -sf "$PWD/.venv/bin/igogs" "$BIN/$NOM"
+ln -sf "$CIBLE" "$BIN/$NOM"
 cp -f igogs/static/igogs.png "$ICONS/$NOM.png"
 cat > "$APPS/$NOM.desktop" <<DESKTOP
 [Desktop Entry]

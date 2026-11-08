@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "igogs"
-version = "0.1.0"
+version = "0.1.1"
 description = "Driver caméra pour goban physique : jouer sur OGS, enregistrer, analyser avec Go Sensei"
 readme = "README.md"
 license = "MIT"
@@ -18,7 +18,7 @@ dev = ["pytest"]
 igogs = "igogs.__main__:main"
 
 [tool.setuptools]
-packages = ["igogs"]
+packages = ["igogs", "igogs.static"]
 
 [tool.setuptools.package-data]
-igogs = ["static/*"]
+"igogs.static" = ["*"]

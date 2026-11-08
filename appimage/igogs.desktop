@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+# Pas d'espace dans Name : python-appimage en fait le nom du fichier AppImage.
+Name=IgOGS
+GenericName=Goban physique
+Comment=Jouer sur OGS et analyser avec Go Sensei sur un vrai goban filmé
+Exec=igogs
+Icon=igogs
+Categories=Game;BoardGame;
+Terminal=false
+StartupNotify=false
