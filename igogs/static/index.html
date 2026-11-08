@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IgOGS</title>
+<link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand"><img src="icon.svg" alt=""> IgOGS <span id="version" class="muted"></span></div>
+  <div class="header-right">
+    <div id="status-line" class="status-line"></div>
+    <select id="lang-select" class="lang" title="Langue de l'interface"><option value="fr">FR</option><option value="en">EN</option></select>
+    <button id="btn-restart" class="icon-btn" title="Redémarrer IgOGS (après une mise à jour)">⟳</button>
+    <button id="btn-quit" class="icon-btn quit" title="Quitter IgOGS (libère la caméra)">⏻</button>
+  </div>
+</header>
+<div id="stopped" class="stopped hidden">
+  <div><h2>IgOGS est arrêté</h2>
+    <p>La caméra est libérée. Pour le relancer : menu des applications → IgOGS, ou la commande <code>igogs</code>.</p></div>
+</div>
+
+<main>
+  <section class="panel camera-panel">
+    <div class="panel-head">
+      <h2>Caméra</h2>
+      <select id="camera-select" title="Source vidéo"></select>
+      <select id="size-select" title="Taille du goban">
+        <option value="19">19×19</option><option value="13">13×13</option><option value="9">9×9</option>
+      </select>
+      <select id="view-select" title="Où êtes-vous assis sur l'image de la caméra ? L'aperçu est tourné pour montrer le goban depuis votre place.">
+        <option value="0">Ma place : en bas de l'image</option>
+        <option value="180">Ma place : en haut (face à la caméra)</option>
+        <option value="270">Ma place : à gauche de l'image</option>
+        <option value="90">Ma place : à droite de l'image</option>
+      </select>
+      <label class="check"><input type="checkbox" id="show-warped"> Vue redressée</label>
+    </div>
+    <div id="cam" class="cam">
+      <canvas id="cam-overlay"></canvas>
+      <div id="cam-empty" class="cam-empty">Choisissez une caméra (ou le simulateur) ci-dessus.</div>
+    </div>
+    <p id="calib-help" class="help"></p>
+    <div class="buttons">
+      <button id="btn-corners">Placer les 4 coins</button>
+      <button id="btn-orient" title="Pendant une partie (OGS, Go Sensei…) : trouve la rotation et le miroir qui font coïncider le goban et la partie">Orienter automatiquement</button>
+      <button id="btn-rotate" title="Fait tourner les coordonnées d'un quart de tour">Tourner ↻</button>
+      <button id="btn-mirror">Miroir</button>
+      <button id="btn-refine" title="Cale la grille sur les lignes du goban">Ajuster sur les lignes</button>
+      <button id="btn-empty" title="À faire goban vide : mémorise le bois à chaque intersection">Mémoriser goban vide</button>
+    </div>
+  </section>
+
+  <section class="panel board-panel">
+    <div class="panel-head">
+      <h2 id="board-title">Partie</h2>
+      <span id="owner-badge" class="badge"></span>
+      <label class="check" title="Numéro du coup sur chaque pierre"><input type="checkbox" id="numbers"> Numéros</label>
+      <label class="check" title="Annonce les coups de l'adversaire à voix haute"><input type="checkbox" id="speak"> Voix</label>
+    </div>
+    <div id="instruction" class="instruction"></div>
+    <svg id="board" class="board" viewBox="0 0 100 100" aria-label="Goban"></svg>
+    <div id="clocks" class="clocks hidden">
+      <div class="clock" id="clock-B"><span class="stone-ico b"></span><span class="name"></span><span class="time"></span></div>
+      <div class="clock" id="clock-W"><span class="stone-ico w"></span><span class="name"></span><span class="time"></span></div>
+    </div>
+    <p id="sim-help" class="help hidden">Simulateur : clic = pose la couleur au trait (ou retire), Maj+clic = l'autre couleur.</p>
+
+    <nav class="tabs">
+      <button data-tab="local" class="active">Enregistrement</button>
+      <button data-tab="ogs">OGS</button>
+      <button data-tab="apps">Applications</button>
+    </nav>
+
+    <div class="tab" id="tab-local">
+      <div class="buttons">
+        <button id="btn-new">Nouvelle partie</button>
+        <button id="btn-undo">Annuler le coup</button>
+        <button id="btn-pass">Passer</button>
+        <a id="btn-sgf" class="button" href="/api/game.sgf" download="partie.sgf">Télécharger le SGF</a>
+        <button id="btn-gosensei">Analyser dans Go Sensei</button>
+      </div>
+      <p class="help">Les pierres déjà posées au démarrage d'une partie deviennent la position de départ (handicap). Retirer la ou les dernières pierres annule les coups.</p>
+      <ol id="moves" class="moves"></ol>
+    </div>
+
+    <div class="tab hidden" id="tab-ogs">
+      <form id="ogs-login" class="hidden">
+        <p class="help">Connectez votre compte online-go.com. Le mot de passe sert une seule fois à obtenir un jeton ; il n'est pas enregistré.</p>
+        <input id="ogs-user" placeholder="Pseudo OGS" autocomplete="username" required>
+        <input id="ogs-pass" type="password" placeholder="Mot de passe" autocomplete="current-password" required>
+        <button type="submit">Se connecter</button>
+      </form>
+      <div id="ogs-session" class="hidden">
+        <div class="row"><span id="ogs-who"></span><button id="ogs-logout" class="link">Déconnexion</button></div>
+        <div id="ogs-game" class="hidden">
+          <div id="ogs-game-title" class="row strong"></div>
+          <div class="buttons">
+            <button id="ogs-pass-btn">Passer</button>
+            <button id="ogs-undo-accept" class="hidden">Accepter l'annulation</button>
+            <button id="ogs-resign" class="danger">Abandonner</button>
+            <button id="ogs-leave">Quitter la partie</button>
+          </div>
+        </div>
+        <div class="row"><strong>Parties en cours</strong><button id="ogs-refresh" class="link">Actualiser</button></div>
+        <ul id="ogs-games" class="games"></ul>
+      </div>
+      <p id="ogs-error" class="error"></p>
+    </div>
+
+    <div class="tab hidden" id="tab-apps">
+      <p class="help">IgOGS est un driver : d'autres applications peuvent suivre le goban comme avec une planche électronique.
+        Elles s'abonnent à <code>/events</code> et indiquent la partie attendue avec <code>POST /api/claim</code> (voir PROTOCOL.md).</p>
+      <p>Utilisé par : <strong id="apps-owner"></strong></p>
+      <button id="btn-release">Reprendre la main (enregistrement local)</button>
+    </div>
+  </section>
+</main>
+<div id="toast" class="toast hidden"></div>
+<script src="i18n.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

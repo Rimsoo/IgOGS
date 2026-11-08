@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "igogs"
+version = "0.1.0"
+description = "Driver caméra pour goban physique : jouer sur OGS, enregistrer, analyser avec Go Sensei"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = ["numpy", "opencv-python-headless", "websocket-client", "dbus-fast; sys_platform == 'linux'"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+igogs = "igogs.__main__:main"
+
+[tool.setuptools]
+packages = ["igogs"]
+
+[tool.setuptools.package-data]
+igogs = ["static/*"]
