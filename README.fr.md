@@ -86,6 +86,22 @@ OAuth (application publique, comme NXGo) ; seuls les jetons sont gardés, dans `
 - Si le goban semble tourné ou en miroir par rapport à la partie, IgOGS le signale ; « Orienter
   automatiquement » essaie les 8 orientations possibles et garde celle qui correspond.
 
+## Jouer contre un logiciel à l'écran (Hyprland)
+
+Onglet **Jeu à l'écran** : pour jouer sur le goban physique contre un logiciel sans API, par exemple
+The Conquest of Go contre son IA. Choisissez votre couleur, puis « Suivre le jeu ».
+
+- IgOGS trouve la fenêtre du jeu (titre contenant `conquest of go`, réglable par `screen.window` dans la
+  config), la capture avec `grim` et repère seul la grille du goban (9, 13 ou 19).
+- Les coups posés sur le goban sont cliqués dans le jeu : le curseur est placé par
+  `hyprctl dispatch movecursor`, le clic vient d'une souris virtuelle (`/dev/uinput` accessible en écriture,
+  par exemple via le groupe `input`), puis le curseur revient où il était.
+- Les coups de l'adversaire sont lus à l'écran, annoncés (voix) et affichés à poser, comme sur OGS. Les
+  prises et les passes du jeu sont suivies. « L'adversaire a passé » si l'IA passe (invisible sur le plateau).
+- Une annulation ou une nouvelle partie dans le logiciel : IgOGS repart de la position affichée (ou
+  « Resynchroniser »).
+- Le jeu doit rester visible (pas sur un autre bureau), avec un thème de goban classique (lignes et pierres nettes).
+
 ## Analyser avec Go Sensei
 
 Dans Go Sensei, bouton **📷 Goban** : Go Sensei prend la main sur le goban. IgOGS indique quoi poser ou

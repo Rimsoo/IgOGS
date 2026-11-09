@@ -71,6 +71,9 @@ class Tracker:
         self.observed = None
         self.previous = None  # observation stable précédente
         self.pending = None  # [(couleur, pt)] proposés, en attente de confirmation
+        # Pierres prises déjà vues retirées du goban : pt → numéro du coup qui les a prises. Une
+        # pierre qui réapparaît là est un nouveau coup (jouer dans le trou), pas un oubli.
+        self.cleared = {}
         self.sync = {"status": "unknown", "missing": [], "extra": [], "message": ""}
 
     # ------------------------------------------------------------ partie
@@ -83,6 +86,7 @@ class Tracker:
         if allow_undo is not None:
             self.allow_undo = allow_undo
         self.pending = None
+        self.cleared = {}
         return self.refresh()
 
     def push(self, pt, color=None):
@@ -94,6 +98,7 @@ class Tracker:
     def undo(self, count=1):
         self.game.undo(count)
         self.pending = None
+        self.cleared = {}
         return self.refresh()
 
     def refresh(self):
@@ -104,15 +109,25 @@ class Tracker:
 
     # ------------------------------------------------------------ observation
     def _tolerated(self):
-        """Pierres prises par les derniers coups : on tolère qu'elles soient encore sur le goban."""
+        """Pierres prises par les derniers coups : on tolère qu'elles soient encore sur le goban
+        (sauf celles qu'on a déjà vues retirées)."""
         n = len(self.game.moves)
         out = {}
         for k in (n, n - 1):
             if k > 0:
                 color = other(self.game.moves[k - 1][0])
                 for pt in self.game.captured_by(k):
-                    out[pt] = color
+                    if self.cleared.get(pt) != k:
+                        out[pt] = color
         return out
+
+    def _note_cleared(self, observed):
+        n = len(self.game.moves)
+        for k in (n, n - 1):
+            if k > 0:
+                for pt in self.game.captured_by(k):
+                    if observed[pt] is None:
+                        self.cleared[pt] = k
 
     @staticmethod
     def _matches(expected, observed, tolerated):
@@ -155,7 +170,9 @@ class Tracker:
                 if k:
                     game.undo(k)
                     self.pending = None
+                    self.cleared = {}
                     events.append(("undo", k))
+        self._note_cleared(observed)
         self._update_sync(observed)
         return events
 

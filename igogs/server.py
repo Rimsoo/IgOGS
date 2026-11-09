@@ -22,6 +22,7 @@ from .driver import Driver
 from .goban import B, W, Game, IllegalMove, from_gtp
 from .i18n import set_lang, tr
 from .ogs import OGSBridge, OGSClient, OGSError
+from .screen import ScreenBridge, ScreenError
 
 STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 PROTOCOL = 1
@@ -78,6 +79,7 @@ class App:
         self.driver.subscribe(lambda kind, data: self.hub.send(kind, self.state() if kind == "state" else data))
         self.ogs = OGSClient(self.cfg, log=log)
         self.bridge = OGSBridge(self.ogs, self.driver, log=log, notify=self.hub.send)
+        self.screen = ScreenBridge(self.cfg, self.driver, log=log, notify=self.hub.send)
 
     def start(self):
         self.driver.start()
@@ -92,7 +94,7 @@ class App:
         self.hub.send("ogs", self.bridge.state())
 
     def state(self):
-        return dict(self.driver.state(), ogs=self.bridge.state(), version=__version__, boot=self.boot,
+        return dict(self.driver.state(), ogs=self.bridge.state(), screen=self.screen.state(), version=__version__, boot=self.boot,
                     lang=i18n.LANG)
 
     def shutdown(self, reason="", restart=False):
@@ -177,6 +179,17 @@ class App:
             self.bridge.resign()
         elif path == "/api/ogs/undo-accept":
             self.bridge.accept_undo()
+        # -------------------------------------------------- jeu à l'écran
+        elif path == "/api/screen/start":
+            if d.owner not in ("local", "screen"):
+                raise ValueError(tr("le goban est utilisé par {owner}", owner=d.owner))
+            self.screen.start(body.get("color", B))
+        elif path == "/api/screen/stop":
+            self.screen.stop()
+        elif path == "/api/screen/resync":
+            self.screen.resync()
+        elif path == "/api/screen/opponent-pass":
+            self.screen.opponent_passed()
         # -------------------------------------------------- applications externes
         elif path == "/api/claim":
             return self._claim(body)
@@ -202,11 +215,13 @@ class App:
 
     def _claim(self, body):
         owner = str(body.get("owner") or "").strip()
-        if not owner or owner in ("local", "ogs"):
+        if not owner or owner in ("local", "ogs", "screen"):
             raise ValueError(tr("owner : nom de l'application (ex. « go-sensei »)"))
         d = self.driver
         if d.owner == "ogs" and self.bridge.game_id and not body.get("force"):
             raise ValueError(tr("une partie OGS est en cours sur le goban"))
+        if d.owner == "screen" and self.screen.active and not body.get("force"):
+            raise ValueError(tr("le goban est utilisé par {owner}", owner=d.owner))
         size = int(body.get("size", 19))
         setup = {c: [from_gtp(m, size) for m in (body.get("setup") or {}).get(c, [])] for c in (B, W)}
         game = Game(size, setup, body.get("first", B) if body.get("first") in (B, W) else B,
@@ -281,6 +296,9 @@ def make_handler(app):
             if p in ("/frame.jpg", "/warped.jpg"):
                 jpg = app.driver.jpeg(warped=p == "/warped.jpg")
                 return self._send(200, jpg, "image/jpeg") if jpg else self._empty(404)
+            if p == "/screen.jpg":
+                jpg = app.screen.preview
+                return self._send(200, jpg, "image/jpeg") if jpg else self._empty(404)
             if p == "/api/game.sgf":
                 return self._send(200, app.driver.sgf().encode(), "application/x-go-sgf; charset=utf-8")
             if p == "/api/ogs/games":
@@ -322,7 +340,7 @@ def make_handler(app):
                 return self._json(app.api(p, body))
             except KeyError as e:
                 return self._json({"error": f"inconnu : {e}"}, 404)
-            except (ValueError, OGSError, IllegalMove) as e:
+            except (ValueError, OGSError, ScreenError, IllegalMove) as e:
                 return self._json({"error": str(e)}, 400)
             except Exception as e:
                 log(f"API {p} : {e!r}")
@@ -456,6 +474,7 @@ def run(port=None, open_browser=True, tray=True):
         app.stopping = True
         if app.tray:
             app.tray.stop()
+        app.screen.close()
         app.driver.stop()
         if app.restart_requested:
             log("Redémarrage d'IgOGS")

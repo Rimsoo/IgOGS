@@ -71,6 +71,7 @@
     <nav class="tabs">
       <button data-tab="local" class="active">Enregistrement</button>
       <button data-tab="ogs">OGS</button>
+      <button data-tab="screen">Jeu à l'écran</button>
       <button data-tab="apps">Applications</button>
     </nav>
 
@@ -108,6 +109,24 @@
         <ul id="ogs-games" class="games"></ul>
       </div>
       <p id="ogs-error" class="error"></p>
+    </div>
+
+    <div class="tab hidden" id="tab-screen">
+      <p class="help">Jouez contre un logiciel de go affiché à l'écran (The Conquest of Go…) : vos coups posés sur le goban
+        y sont cliqués, ceux de l'adversaire sont lus à l'écran et annoncés. Le jeu doit rester visible, avec un thème
+        de goban classique (lignes et pierres nettes).</p>
+      <div class="buttons">
+        <select id="screen-color" title="Votre couleur dans le jeu">
+          <option value="B">Je joue Noir</option><option value="W">Je joue Blanc</option>
+        </select>
+        <button id="screen-start">Suivre le jeu</button>
+        <button id="screen-resync" title="Repart de la position affichée par le jeu (après une annulation, une nouvelle partie…)">Resynchroniser</button>
+        <button id="screen-opp-pass">L'adversaire a passé</button>
+        <button id="screen-stop">Arrêter</button>
+      </div>
+      <div id="screen-info" class="row"></div>
+      <p id="screen-error" class="error"></p>
+      <img id="screen-preview" class="screen-preview hidden" alt="">
     </div>
 
     <div class="tab hidden" id="tab-apps">

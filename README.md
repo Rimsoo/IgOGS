@@ -84,6 +84,21 @@ game in progress.
 - If the board looks rotated or mirrored compared to the game, IgOGS tells you; “Auto-orient” tries the 8
   possible orientations and keeps the one that matches.
 
+## Playing against Go software on screen (Hyprland)
+
+**On-screen game** tab: to play on the physical board against software that has no API, such as
+The Conquest of Go against its AI. Choose your colour, then “Follow the game”.
+
+- IgOGS finds the game window (title containing `conquest of go`, configurable as `screen.window` in the config),
+  captures it with `grim` and locates the goban grid by itself (9, 13 or 19).
+- The moves you place on the board are clicked into the game: the cursor is moved with
+  `hyprctl dispatch movecursor`, the click comes from a virtual mouse (`/dev/uinput` must be writable, e.g. by
+  being in the `input` group), then the cursor goes back where it was.
+- The opponent's moves are read on screen, announced (voice) and shown to be placed, like on OGS. Captures
+  and passes in the game are followed. Use “Opponent passed” if the AI passes (a pass is invisible on the board).
+- An undo or a new game in the software: IgOGS starts again from the displayed position (or “Resync”).
+- The game must stay visible (not on another workspace), with a classic board theme (crisp lines and stones).
+
 ## Analysing with Go Sensei
 
 In Go Sensei, click **📷 Goban**: Go Sensei takes control of the board. IgOGS shows what to place or remove

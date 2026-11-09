@@ -28,6 +28,22 @@ const EN = {
   "Fait tourner les coordonnées d'un quart de tour": "Rotates the coordinates by a quarter turn",
   "Tourner ↻": "Rotate ↻",
   "Miroir": "Mirror",
+  // jeu à l'écran
+  "Jeu à l'écran": "On-screen game",
+  "Jouez contre un logiciel de go affiché à l'écran (The Conquest of Go…) : vos coups posés sur le goban y sont cliqués, ceux de l'adversaire sont lus à l'écran et annoncés. Le jeu doit rester visible, avec un thème de goban classique (lignes et pierres nettes).":
+    "Play against Go software shown on screen (The Conquest of Go…): the moves you play on the goban are clicked into it, and the opponent's moves are read from the screen and announced. The game must stay visible, with a classic board theme (crisp lines and stones).",
+  "Votre couleur dans le jeu": "Your color in the game",
+  "Je joue Noir": "I play Black",
+  "Je joue Blanc": "I play White",
+  "Suivre le jeu": "Follow the game",
+  "Recommencer": "Restart",
+  "Repart de la position affichée par le jeu (après une annulation, une nouvelle partie…)":
+    "Starts again from the position shown by the game (after an undo, a new game…)",
+  "Resynchroniser": "Resync",
+  "L'adversaire a passé": "Opponent passed",
+  "Arrêter": "Stop",
+  "Suivi : {window} · goban {n}×{n} · vous avez {color}": "Following: {window} · {n}×{n} goban · you are {color}",
+  "Fenêtre recherchée : « {p} »": "Window searched for: “{p}”",
   "Cale la grille sur les lignes du goban": "Snaps the grid onto the goban lines",
   "Ajuster sur les lignes": "Snap to lines",
   "À faire goban vide : mémorise le bois à chaque intersection": "Do this with an empty goban: memorises the wood at every point",

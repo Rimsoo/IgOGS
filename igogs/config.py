@@ -31,6 +31,8 @@ DEFAULTS = {
         "expires": 0,
     },
     "gosensei": {"url": "http://127.0.0.1:8765"},
+    # Jeu à l'écran : fenêtre dont le titre ou la classe contient ce texte.
+    "screen": {"window": "conquest of go"},
 }
 
 

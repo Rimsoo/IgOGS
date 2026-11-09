@@ -74,10 +74,13 @@ function connect() {
   }
   es.addEventListener("calibration", (e) => { if (S) { S.calibration = JSON.parse(e.data); renderCamera(); } });
   es.addEventListener("ogs", (e) => { if (S) { S.ogs = JSON.parse(e.data); renderOgs(); renderBoard(); } });
-  es.addEventListener("ogs-move", (e) => {
-    const m = JSON.parse(e.data);
-    if (!m.mine) speak(m.color, m.move);
-  });
+  for (const k of ["ogs-move", "screen-move"]) {
+    es.addEventListener(k, (e) => {
+      const m = JSON.parse(e.data);
+      if (!m.mine) speak(m.color, m.move);
+    });
+  }
+  es.addEventListener("screen", (e) => { if (S) { S.screen = JSON.parse(e.data); renderScreen(); } });
   es.addEventListener("move", (e) => {
     const m = JSON.parse(e.data);
     if (m.applied && m.owner === "local") toast(`${colorName(m.color)} ${m.move}`);
@@ -103,6 +106,7 @@ function renderAll() {
   renderCamera();
   renderBoard();
   renderOgs();
+  renderScreen();
   renderStatus();
 }
 
@@ -206,23 +210,27 @@ function drawOverlay() {
   const cal = S.calibration;
   const n = cal.size;
 
-  let points;
+  // Pendant le placement des coins, l'ancienne grille gêne : on ne montre que l'image.
+  let points, stones;
   if (R.warped) {
     points = [];
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) points.push([(x + 1) * 32, (y + 1) * 32]);
-  } else if (cal.overlay) {
+    stones = (cal.overlay && cal.overlay.stones_warped) || points;
+  } else if (cal.overlay && !placing) {
     ctx.strokeStyle = "rgba(80, 200, 255, 0.75)";
     ctx.lineWidth = 1 * dpr;
     ctx.beginPath();
     for (const [a, b] of cal.overlay.lines) { ctx.moveTo(...P(a)); ctx.lineTo(...P(b)); }
     ctx.stroke();
     points = cal.overlay.points;
+    stones = cal.overlay.stones || points;
   }
-  // Lecture en direct : pastille par intersection occupée ou douteuse.
+  // Lecture en direct : pastille par intersection occupée ou douteuse, là où la pierre est lue
+  // (vue de biais, le corps de la pierre est un peu décalé de l'intersection).
   const grid = S.live && S.live.grid;
-  if (points && grid && grid.length === points.length) {
+  if (stones && grid && grid.length === stones.length) {
     const r = Math.max(3, 4 * dpr);
-    points.forEach((p, i) => {
+    stones.forEach((p, i) => {
       const c = grid[i];
       if (c === ".") return;
       const [x, y] = P(p);
@@ -376,7 +384,7 @@ function renderBoard() {
   svg.innerHTML = parts.join("");
   svg.dataset.n = n;
 
-  const ownerLabel = { local: t("Enregistrement local"), ogs: "OGS" }[b.owner] || b.owner;
+  const ownerLabel = { local: t("Enregistrement local"), ogs: "OGS", screen: t("Jeu à l'écran") }[b.owner] || b.owner;
   $("owner-badge").textContent = ownerLabel;
   $("apps-owner").textContent = ownerLabel;
   $("board-title").textContent = b.info.PB || b.info.PW ? `${b.info.PB || "?"} (●) – ${b.info.PW || "?"} (○)` : t("Partie");
@@ -417,8 +425,8 @@ function renderInstruction() {
     if (sync.rotated) text = t("Le goban semble tourné ou en miroir : cliquez « Orienter automatiquement »");
     cls = "bad";
   } else if (S.ogs.phase === "finished" && b.owner === "ogs") [text, cls] = [S.ogs.result ? t("Partie terminée : {result}", { result: S.ogs.result }) : t("Partie terminée"), "ok"];
-  else if (sync.camera_turn) [text, cls] = [t(b.owner === "ogs" ? "À vous de jouer ({color})" : "{color} joue", { color: tp }), "ok"];
-  else if (b.owner === "ogs") [text, cls] = [t("En attente du coup de l'adversaire ({color})", { color: tp }), ""];
+  else if (sync.camera_turn) [text, cls] = [t(b.owner === "ogs" || b.owner === "screen" ? "À vous de jouer ({color})" : "{color} joue", { color: tp }), "ok"];
+  else if (b.owner === "ogs" || b.owner === "screen") [text, cls] = [t("En attente du coup de l'adversaire ({color})", { color: tp }), ""];
   else [text, cls] = [t("{color} au trait", { color: tp }), ""];
   el.textContent = text;
   el.className = "instruction " + cls;
@@ -504,6 +512,29 @@ function formatClock(tm, elapsed) {
   return fmt(main) + (tm.periods ? ` + ${tm.periods}×${fmt(tm.period_time)}` : tm.moves_left ? " " + t("({n} coups)", { n: tm.moves_left }) : "");
 }
 
+// ------------------------------------------------------------------ jeu à l'écran
+function renderScreen() {
+  const s = S.screen;
+  if (!s) return;
+  $("screen-color").value = s.my_color;
+  $("screen-color").disabled = s.active;
+  $("screen-start").textContent = t(s.active ? "Recommencer" : "Suivre le jeu");
+  $("screen-resync").disabled = !s.active;
+  $("screen-opp-pass").disabled = !s.active || S.board.to_play === s.my_color;
+  $("screen-stop").disabled = !s.active;
+  $("screen-info").textContent = s.active
+    ? t("Suivi : {window} · goban {n}×{n} · vous avez {color}", { window: s.window || "?", n: s.size, color: colorName(s.my_color) })
+    : t("Fenêtre recherchée : « {p} »", { p: s.pattern });
+  $("screen-error").textContent = s.error || "";
+}
+
+function refreshScreenPreview() {
+  const img = $("screen-preview");
+  img.onload = () => img.classList.remove("hidden");
+  img.onerror = () => img.classList.add("hidden");
+  img.src = "/screen.jpg?t=" + Date.now();
+}
+
 async function loadOgsGames() {
   const ul = $("ogs-games");
   ul.innerHTML = `<li class="help">${t("Chargement…")}</li>`;
@@ -568,6 +599,11 @@ function setupActions() {
   $("ogs-resign").addEventListener("click", () => { if (confirm(t("Abandonner la partie sur OGS ? C'est définitif."))) act("/api/ogs/resign"); });
   $("ogs-undo-accept").addEventListener("click", () => act("/api/ogs/undo-accept"));
   $("ogs-leave").addEventListener("click", () => act("/api/ogs/disconnect"));
+
+  $("screen-start").addEventListener("click", () => act("/api/screen/start", { color: $("screen-color").value }).finally(refreshScreenPreview));
+  $("screen-resync").addEventListener("click", () => act("/api/screen/resync"));
+  $("screen-opp-pass").addEventListener("click", () => act("/api/screen/opponent-pass"));
+  $("screen-stop").addEventListener("click", () => act("/api/screen/stop"));
 
   document.querySelectorAll(".tabs button").forEach((btn) => btn.addEventListener("click", () => {
     document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("active", b === btn));

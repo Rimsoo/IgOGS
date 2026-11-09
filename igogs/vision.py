@@ -19,6 +19,10 @@ from .i18n import tr
 from .tracker import UNKNOWN
 
 CELL = 32  # pixels par case dans l'image redressée
+# Hauteur (en cases) du point de la pierre qu'on lit : le milieu de sa partie visible. Une pierre
+# fait ~9 mm d'épaisseur pour des cases de ~22 mm ; vue de biais, elle apparaît décalée de
+# l'intersection (vers le fond), d'autant plus que la caméra est rasante.
+STONE_HEIGHT = 0.22
 
 
 # ---------------------------------------------------------------------------- caméras
@@ -286,8 +290,55 @@ class Calibration:
         self._update()
         return float(np.abs(best - start).max())
 
-    def overlay(self):
-        """Lignes de la grille et intersections, en pixels caméra (pour l'interface)."""
+    def stone_points(self, frame_size):
+        """Où apparaît le corps d'une pierre posée sur chaque intersection, dans l'image
+        redressée (ordre de `grid_points`). L'homographie ne vaut que pour le plan du goban :
+        on en déduit la pose de la caméra (focale estimée, centre optique au milieu de l'image)
+        pour projeter le point situé à STONE_HEIGHT au-dessus de chaque intersection."""
+        pts = self.grid_points()
+        if not self.ready or not frame_size:
+            return pts
+        key = (tuple(frame_size), self.H.tobytes())
+        if getattr(self, "_stones_key", None) == key:
+            return self._stones
+        w, h = frame_size
+        G = np.linalg.inv(self.H)  # plan redressé → pixels caméra
+        g = G.copy()
+        g[0] -= w / 2 * g[2]
+        g[1] -= h / 2 * g[2]
+        # Focale : les deux axes du goban sont perpendiculaires (mal conditionné quand le goban
+        # n'est incliné que selon un axe : on garde alors une valeur de webcam typique).
+        f = 0.6 * w
+        den = g[2, 0] * g[2, 1]
+        if abs(den) > 1e-12:
+            f2 = -(g[0, 0] * g[0, 1] + g[1, 0] * g[1, 1]) / den
+            if (0.35 * w) ** 2 < f2 < (2.5 * w) ** 2:
+                f = float(np.sqrt(f2))
+        M = g.copy()
+        M[:2] /= f  # K⁻¹·G = λ·[r1 r2 t]
+        m1, m2 = M[:, 0], M[:, 1]
+        lam = np.sqrt(np.linalg.norm(m1) * np.linalg.norm(m2))
+        up = np.cross(m1, m2)
+        up /= np.linalg.norm(up)
+        c = M @ np.array([self.canvas / 2, self.canvas / 2, 1.0])
+        if up @ c > 0:  # la normale doit pointer vers la caméra (à l'origine)
+            up = -up
+        P = np.c_[pts, np.ones(len(pts))] @ M.T + lam * STONE_HEIGHT * CELL * up
+        P[:, :2] *= f  # retour en pixels caméra (centrés)
+        P[:, 0] += w / 2 * P[:, 2]
+        P[:, 1] += h / 2 * P[:, 2]
+        q = P @ self.H.T
+        out = (q[:, :2] / q[:, 2:3]).astype(np.float32)
+        # Garde-fou : jamais plus d'une demi-case de décalage.
+        d = out - pts
+        k = np.minimum(1.0, 0.5 * CELL / np.maximum(np.hypot(d[:, 0], d[:, 1]), 1e-6))
+        out = pts + d * k[:, None]
+        self._stones_key, self._stones = key, out
+        return out
+
+    def overlay(self, frame_size=None):
+        """Lignes de la grille, intersections et points lus sur les pierres (en pixels caméra
+        et, pour la vue redressée, en pixels redressés), pour l'interface."""
         if not self.ready:
             return None
         n = self.size
@@ -300,6 +351,8 @@ class Calibration:
         return {
             "lines": [lines[i:i + 2] for i in range(0, len(lines), 2)],
             "points": self.to_camera(self.grid_points()).round(1).tolist(),
+            "stones": self.to_camera(self.stone_points(frame_size)).round(1).tolist(),
+            "stones_warped": self.stone_points(frame_size).round(1).tolist(),
         }
 
 
@@ -345,12 +398,17 @@ class Detector:
         self._prev_gray = None
 
     # -------------------------------------------------------------- mesures
-    def features(self, warped):
-        """Lab médian sur un disque autour de chaque intersection → (n, 3) float."""
+    def features(self, warped, centers=None):
+        """Lab médian sur un disque autour de chaque intersection → (n, 3) float.
+        `centers` : points lus dans l'image redressée (`Calibration.stone_points`)."""
         lab = cv2.cvtColor(warped, cv2.COLOR_BGR2LAB).astype(np.float32)
-        n = self.size
-        c = (np.arange(n) + 1) * CELL
-        cy, cx = np.meshgrid(c, c, indexing="ij")
+        if centers is None:
+            n = self.size
+            c = (np.arange(n) + 1) * CELL
+            cy, cx = np.meshgrid(c, c, indexing="ij")
+        else:
+            centers = np.rint(centers).astype(int)
+            cx, cy = centers[:, 0], centers[:, 1]
         ys = np.clip(cy.reshape(-1, 1) + self._dy, 0, lab.shape[0] - 1)
         xs = np.clip(cx.reshape(-1, 1) + self._dx, 0, lab.shape[1] - 1)
         return np.median(lab[ys, xs], axis=1)

@@ -76,6 +76,33 @@ def test_capture_with_stones_left_on_board_then_removed():
     assert t.sync["status"] == "ok"
 
 
+def test_playing_in_the_hole_left_by_a_capture():
+    """Noir A3 prend Blanc A1-A2 ; les pierres sont retirées, puis Blanc rejoue A1 dans le trou :
+    c'est un coup, pas une pierre prise oubliée sur le goban."""
+    pts = lambda *ms: [from_gtp(m, 9) for m in ms]
+    g = Game(9, setup={B: pts("B1", "B2"), W: pts("A1", "A2")}, first=B)
+    t = Tracker(g)
+    t.observe(g.position())
+    seen = pos_after(g, (B, "A3"))  # pierres prises encore sur le goban
+    t.observe(seen)
+    assert g.moves == [(B, from_gtp("A3", 9))] and t.sync["status"] == "remove-captured"
+    t.observe(g.position())  # retirées
+    assert t.sync["status"] == "ok"
+    ev = t.observe(pos_after(g, (W, "A1")))
+    assert ev == [("move", W, from_gtp("A1", 9), True)]
+    assert t.sync["status"] == "ok"
+
+
+def test_captured_stones_never_removed_are_still_tolerated():
+    pts = lambda *ms: [from_gtp(m, 9) for m in ms]
+    g = Game(9, setup={B: pts("B1", "B2"), W: pts("A1", "A2")}, first=B)
+    t = Tracker(g)
+    t.observe(g.position())
+    t.observe(pos_after(g, (B, "A3")))
+    assert t.observe(pos_after(g, (W, "A1"), (W, "A2"))) == []  # pas de coup inventé
+    assert t.sync["status"] == "remove-captured"
+
+
 def test_undo_by_removing_last_stone():
     g = Game(9)
     t = Tracker(g)

@@ -74,6 +74,7 @@ code { background: var(--btn); padding: 0 4px; border-radius: 4px; }
 .tab { padding-top: 6px; }
 .moves { columns: 4 70px; font-size: 13px; color: var(--muted); padding-left: 28px; max-height: 180px; overflow: auto; }
 .games { list-style: none; padding: 0; margin: 0; }
+.screen-preview { display: block; width: 100%; margin-top: 8px; border-radius: 6px; }
 .games li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 0;
   border-bottom: 1px solid var(--line); }
 .games .turn { color: var(--accent); font-size: 12px; font-weight: 600; }

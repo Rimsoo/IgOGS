@@ -287,7 +287,7 @@ class Driver:
             raise ValueError(tr("caméra ou calibration manquante"))
         with self.lock:
             warped = self.cal.warp(frame)
-            self.det.learn_empty(self.det.features(warped))
+            self.det.learn_empty(self.det.features(warped, self.cal.stone_points(frame.shape[1::-1])))
             self.stab.reset()
             self._save_model(force=True)
 
@@ -321,7 +321,7 @@ class Driver:
             size = self.cal.size
             warped = self.cal.warp(frame)
             motion = self.det.motion(warped)
-            f = self.det.features(warped)
+            f = self.det.features(warped, self.cal.stone_points(frame.shape[1::-1]))
             grid, _ = self.det.classify(f)
             stable = self.stab.feed(grid, size, motion)
             live = grid_str(grid)
@@ -456,7 +456,7 @@ class Driver:
 
     def calibration_state(self):
         frame, _ = self.camera.latest() if self.camera else (None, 0)
-        return dict(self.cal.to_dict(), ready=self.cal.ready, overlay=self.cal.overlay(),
+        return dict(self.cal.to_dict(), ready=self.cal.ready, overlay=self.cal.overlay(frame.shape[1::-1] if frame is not None else None),
                     view_rotation=self.view_rotation,
                     frame=[int(frame.shape[1]), int(frame.shape[0])] if frame is not None else None)
 
